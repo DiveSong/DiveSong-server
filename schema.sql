@@ -84,6 +84,14 @@ create table uhistory(
 	foreign key (uid) references users(uid),
 	check (to_oper>=0 and to_oper<=2)
 );
+
+create table authenticate(
+	uid			bigint not null,
+	auth_token	varchar(511) not null,
+	mac			varchar(255) not null,
+	tme			datetime,
+	foreign key	(uid) references users(uid)
+);
 	
 	
 	
