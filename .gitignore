@@ -38,3 +38,11 @@ Thumbs.db
 # Node Modules #
 ################
 node_modules/
+
+# SMTP Auth details #
+#####################
+auth_details.js
+
+# Temporary system files #
+##########################
+*~
