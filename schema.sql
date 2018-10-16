@@ -6,7 +6,7 @@ create table users(
 	email		varchar(511) unique,
 	fname		varchar(255),
 	lname		varchar(255),
-	everify		int
+	everify		int 					--everify = email verify
 );
 
 create table pass(
