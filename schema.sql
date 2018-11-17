@@ -6,7 +6,7 @@ create table users(
 	email		varchar(511) unique,
 	fname		varchar(255),
 	lname		varchar(255),
-	everify		int 					--everify = email verify
+	everify		int 		
 );
 
 create table pass(
@@ -27,7 +27,7 @@ create table authenticate(
 
 create table albums(
 	album_id	bigint primary key auto_increment,
-	name		varchar(255) not null,
+	name		varchar(255) not null unique,
 	rdate		date,
 	num_tracks	int,
 	check (num_tracks>0)
@@ -36,14 +36,15 @@ create table albums(
 create table track(
 	tid		bigint	primary key	auto_increment,
 	name		varchar(255),
-	tpath		varchar(511),
+	tpath		varchar(511) unique,
 	album_id	bigint,
+	aname		varchar(511),
 	artists		varchar(511),
 	genre		varchar(255),
-	lang		varchar(255),
 	track_no	int,
 	duration	bigint,
 	bitrate		bigint,
+	exist		bigint,
 	foreign key (album_id) references albums(album_id)
 );
 	
@@ -57,7 +58,6 @@ create view search as select
 	track.artists	as artists,
 	track.genre	as genre,
 	albums.name	as album_name,
-	track.lang	as lang,
 	track.name	as name
 	from track left join albums 
 	on track.album_id=albums.album_id;
