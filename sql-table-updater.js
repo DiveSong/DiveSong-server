@@ -21,7 +21,7 @@ let frmts=""
 var tname='NULL'
 var artists='NULL'
 var genre='NULL'
-var alname='NULL'
+var alname='\'Unknown\''
 var dur='NULL'
 var bit='NULL'
 var rdate='NULL'
@@ -108,7 +108,8 @@ con.connect(function(err) {
 			dta=data[0]
 			console.log("\n")
 
-			tname=artists=genre=alname=dur=bit=rdate='NULL'
+			tname=artists=genre=dur=bit=rdate='NULL'
+			alname='\'Unknown\''
 			//value(dta);
 			if(dta['general']['recorded_date']!=undefined)
 				rdate='\''+parseInt(dta['general']['recorded_date']).toString()+'-01-01\''
