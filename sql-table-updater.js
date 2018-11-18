@@ -8,10 +8,6 @@ let promise = new Promise((req,res)=>{
 console.log('promise started')
 })
 
-promise= {
-
-}
-promise.then=()=>{;}
 
 var dta={}
 var val={}
@@ -71,23 +67,19 @@ var con = mysql.createConnection({
 
 let parsed = require('./parser.js')
 console.log('test1')
-//promise.then((req,res)=>{
-	parsed.formats.forEach((x)=>{frmts=frmts+"\\."+x+"$|"})
-	frmts=frmts.substring(0,frmts.length-1)
-//})
+parsed.formats.forEach((x)=>{frmts=frmts+"\\."+x+"$|"})
+frmts=frmts.substring(0,frmts.length-1)
 
 console.log('test2')
 let dir = '';
-//promise.then((req,res)=>{
-	for(var i=0;i<parsed.path.length;i++)
-	{
-	  dir = execSync(`cd / ; tree -Rfi ${parsed.path[i]} | grep -E *'(${frmts})';`)
-	  paths=paths+String(dir)
-	}
-	pth=paths.split('\n')
-	pth.pop()
-	console.log(pth.length)
-//})
+for(var i=0;i<parsed.path.length;i++)
+{
+  dir = execSync(`cd / ; tree -Rfi ${parsed.path[i]} | grep -E *'(${frmts})';`)
+  paths=paths+String(dir)
+}
+pth=paths.split('\n')
+pth.pop()
+console.log(pth.length)
 
 
 
@@ -101,13 +93,11 @@ for(var p=0;p<pth.length;p++)
 
 console.log('test3')
 con.connect(function(err) {
-//	promise.then((req,res)=>{
-		for(let i=0;i<pth.length;i++)
-		{
-			mi({maxBuffer:1.797693134862315E+308},pth[i]).then(function(data) {
+	for(let i=0;i<pth.length;i++)
+	{
+		mi({maxBuffer:1.797693134862315E+308},pth[i]).then(function(data) {
 			dta=data[0]
 			console.log("\n")
-
 			tname=artists=genre=dur=bit=rdate='NULL'
 			alname='\'Unknown\''
 			//value(dta);
@@ -141,66 +131,60 @@ con.connect(function(err) {
 			if(dta['general']['album']!=undefined)
 				alname='\''+dta['general']['album']+'\''
 
-	var q1 = `INSERT INTO track (name,tpath,genre,artists,duration,bitrate,exist,aname,track_no) VALUES (${tname},'${pth[i]}',${genre},${artists},${dur},${bit},1,${alname},1)`;
-	var q2=`INSERT INTO albums SET name=${alname},rdate=${rdate},num_tracks=1 ON DUPLICATE KEY UPDATE num_tracks=num_tracks+1`
-	var q3=`UPDATE track SET exist=exist+1 WHERE tpath='${pth[i]}'`
-	var q4=`UPDATE track t,albums a SET t.track_no=a.num_tracks WHERE t.tpath='${pth[i]}' AND t.aname=a.name`
+			var q1 = `INSERT INTO track (name,tpath,genre,artists,duration,bitrate,exist,aname,track_no) VALUES (${tname},'${pth[i]}',${genre},${artists},${dur},${bit},1,${alname},1)`;
+			var q2=`INSERT INTO albums SET name=${alname},rdate=${rdate},num_tracks=1 ON DUPLICATE KEY UPDATE num_tracks=num_tracks+1`
+			var q3=`UPDATE track SET exist=exist+1 WHERE tpath='${pth[i]}'`
+			var q4=`UPDATE track t,albums a SET t.track_no=a.num_tracks WHERE t.tpath='${pth[i]}' AND t.aname=a.name`
 
-				con.query(q1, function (err, result) {
-					if(!err)
-					{
-						console.log('1 track inserted')
-						con.query(q2, function (errr, result) {
-						//if (errr) throw errr;
-						console.log("1 album record inserted");
-						});
-						con.query(q4, function (errr, result) {
-						console.log("update track_no");
-						});
-					}
-					else
-					{
-						con.query(q3, function (err, result) {
-						if (err) {console.log('add exist+1');throw err;}
-						console.log("add exist+1");
-						});
-					}
-	  			});
+			con.query(q1, function (err, result) {
+				if(!err)
+				{
+					console.log('1 track inserted')
+					con.query(q2, function (errr, result) {
+					//if (errr) throw errr;
+					console.log("1 album record inserted");
+					});
+					con.query(q4, function (errr, result) {
+					console.log("update track_no");
+					});
+				}
+				else
+				{
+					con.query(q3, function (err, result) {
+					if (err) {console.log('add exist+1');throw err;}
+					console.log("add exist+1");
+					});
+				}
+			});
 
-
-			}).catch(function (e){console.log('at catch');console.error(e)});//end of medio-info function
-
-		}//end of for loop
-	//})//end of promise.then
+		}).catch(function (e){console.log('at catch');console.error(e)});//end of medio-info function
+	}//end of for loop
 
 	console.log('test4')
-	//promise.then((req,res)=>{
-		var q5='UPDATE track t,albums a SET t.album_id=a.album_id WHERE t.aname=a.name'
-		var q6='UPDATE track t,albums a SET a.num_tracks=a.num_tracks-1 WHERE t.exist=0 AND t.album_id=a.album_id'
-		var q7='DELETE FROM albums WHERE num_tracks=0'
-		var q8='DELETE FROM track WHERE exist=0'
-		var q9='UPDATE track SET exist=0'
+	var q5='UPDATE track t,albums a SET t.album_id=a.album_id WHERE t.aname=a.name'
+	var q6='UPDATE track t,albums a SET a.num_tracks=a.num_tracks-1 WHERE t.exist=0 AND t.album_id=a.album_id'
+	var q7='DELETE FROM albums WHERE num_tracks=0'
+	var q8='DELETE FROM track WHERE exist=0'
+	var q9='UPDATE track SET exist=0'
 
-		con.query(q5, function (err, result) {
-						if (err) {console.log('album_id');throw err;}
-						console.log('album_id')
-					})
-		con.query(q6, function (err, result) {
-						if (err) {console.log('tracks -1');throw err;}
-						console.log('tracks -1')
-					})
-		con.query(q7, function (err, result) {
-						if (err) {console.log('deletion album');throw err;}
-						console.log('deletion album')
-						});
-		con.query(q8, function (err, result) {
-						if (err) {console.log('deletion track');throw err;}
-						console.log('deletion track')
-						});
-		con.query(q9, function (err, result) {
-						if (err) {console.log('updating exist');throw err;}
-						console.log('updating exist')
-						});
-
-		//});
+	con.query(q5, function (err, result) {
+		if (err) {console.log('album_id');throw err;}
+		console.log('album_id')
+	})
+	con.query(q6, function (err, result) {
+		if (err) {console.log('tracks -1');throw err;}
+		console.log('tracks -1')
+	})
+	con.query(q7, function (err, result) {
+		if (err) {console.log('deletion album');throw err;}
+		console.log('deletion album')
+	});
+	con.query(q8, function (err, result) {
+		if (err) {console.log('deletion track');throw err;}
+		console.log('deletion track')
+	});
+	con.query(q9, function (err, result) {
+		if (err) {console.log('updating exist');throw err;}
+		console.log('updating exist')
+	});
 })//end of database connection
