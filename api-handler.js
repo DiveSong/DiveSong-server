@@ -244,6 +244,57 @@ app.get('/songlist',async function(req,res){
 
 })
 
+app.get('/history',async function(req,res){
+	function listSongsHistory(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from thistory`,(err,result) => {
+				if(err)
+				{
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	let output = await listSongsHistory()
+	res.writeHead(200, {
+		'Content-Type': 'text/html',
+	})
+	console.log(output);
+	res.end(JSON.stringify(output));
+
+})
+
+app.get('/userhistory',async (req,res)=>{
+	uid = req.query.uid;
+	if(uid === undefined)
+	{
+		res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
+	}
+	function userHistory(uid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from uhistory where uid = ${uid}`,(err,result) => {
+				if(err)
+				{
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	let output = await userHistory(uid)
+	res.writeHead(200, {
+		'Content-Type': 'text/html',
+	})
+	console.log(output);
+	res.end(JSON.stringify(output));
+
+})
+
 app.post('/updateUser',async function(req,res) {
 
 	async function getAuthenticate(uid){
