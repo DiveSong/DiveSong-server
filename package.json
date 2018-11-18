@@ -1,0 +1,32 @@
+{
+  "name": "DiveSong Server",
+  "description": "DiveSong server based on NodeJS using MySQL as the database and REST APIs for interface",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "Q": "^1.0.0",
+    "child_process": "^1.0.2",
+    "express": "^4.16.4",
+    "fs": "0.0.1-security",
+    "mediainfo-wrapper": "^1.2.0",
+    "mysql": "^2.16.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DiveSong/DiveSong-server.git"
+  },
+  "keywords": [
+    "DiveSong"
+  ],
+  "author": "DiveSong <divesong.iiits@gmail.com> (htttps://www.github.com/DiveSong)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DiveSong/DiveSong-server/issues"
+  },
+  "homepage": "https://github.com/DiveSong/DiveSong-server#readme"
+}
