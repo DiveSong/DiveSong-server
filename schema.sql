@@ -6,7 +6,7 @@ create table users(
 	email		varchar(511) unique,
 	fname		varchar(255),
 	lname		varchar(255),
-	everify		int 		
+	everify		int
 );
 
 create table pass(
@@ -47,19 +47,19 @@ create table track(
 	exist		bigint,
 	foreign key (album_id) references albums(album_id)
 );
-	
+
 create table thistory(
 	tid		bigint primary key,
 	lplayed		datetime,
 	foreign key (tid) references track(tid)
-);	
+);
 
 create view search as select
 	track.artists	as artists,
 	track.genre	as genre,
 	albums.name	as album_name,
 	track.name	as name
-	from track left join albums 
+	from track left join albums
 	on track.album_id=albums.album_id;
 
 create table req_list(
@@ -93,4 +93,3 @@ create table uhistory(
 	foreign key (uid) references users(uid),
 	check (to_oper>=0 and to_oper<=2)
 );
-

@@ -11,6 +11,7 @@ const hash = require('./hash');
 const crypto = require('crypto');
 const fileSystem=require("fs");
 const config = require('./config');
+const mail = require('./mail');
 
 app.use(cookieParser())
 
@@ -108,10 +109,10 @@ app.get('/song',function(req,res) {
 
 app.post('/like',async function(req,res) {
 
-	async function getAuthenticate(uid){
+	async function getAuthenticate(uid,auth_token){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from authenticate where uid = ${uid}`,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token = ${auth_token}`,(err,result) => {
 				resolve(result)
 			})
 		});
@@ -166,7 +167,7 @@ app.post('/like',async function(req,res) {
 	user_agent = req.headers['user-agent']
 	auth_token = req.cookies.auth_token
 
-	authenticateEntry = await getAuthenticate(uid).then(result=>{return result;},reason=>{console.error(reason);});
+	authenticateEntry = await getAuthenticate(uid,auth_token).then(result=>{return result;},reason=>{console.error(reason);});
 
 	if(tid === undefined || operation === undefined ){
 		res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
@@ -320,10 +321,10 @@ app.get('/userhistory',async (req,res)=>{
 
 app.post('/updateUser',async function(req,res) {
 
-	async function getAuthenticate(uid){
+	async function getAuthenticate(uid,auth_token){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from authenticate where uid = ${uid}`,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token = ${auth_token}`,(err,result) => {
 				resolve(result)
 			})
 		});
@@ -335,7 +336,7 @@ app.post('/updateUser',async function(req,res) {
 	auth_token = req.cookies.auth_token
 
 
-	authenticateEntry = await getAuthenticate(uid).then(result=>{return result;},reason=>{console.error(reason);});
+	authenticateEntry = await getAuthenticate(uid,auth_token).then(result=>{return result;},reason=>{console.error(reason);});
 
 	if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry[0] === undefined) {
 		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
@@ -396,24 +397,78 @@ app.post('/updateUser',async function(req,res) {
 
 app.post('/login',async function(req,res) {
 
+	async function getHash(uid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from pass where uid = ${uid}`,(err,result) => {
+				resolve(result)
+			})
+		});
+	}
+	async function setToken(uid,auth_token,user_agent,allowed_time){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`insert into authenticate values (${uid},'${auth_token}','test_mac','${user_agent}','${allowed_time}')`,(err,result)=>{
+				resolve(result);
+			})
+		});
+	}
 	user_agent = req.headers['user-agent']
-
-    data=JSON.parse(req.query.hash);
+	uid = req.query.uid;
+    hmac=JSON.parse(req.query.hmac);
 	if ( req.query.secret !== creds.client.secret )
 	{
 		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
 	}
-    hash=JSON.stringify(data);
+    userHash = await getHash(uid);
+	if(userHash.length != 1 ){
+		res.status(403).end('User not registered')
+		return false;
+	}
+	outputHash = hash.digestHmac(hmac,userHash[0].salt);
+	if (outputHash != userHash[0].passhash){
+		res.status(401).end('Wrong Credentials')
+	}
+	auth_token = crypto.randomBytes(256).toString('hex');
+	allowed_time = new Date(new Date() + 30*24*60*60*1000).toISOString();
+	allowed_time.replace('T',' ').replace('Z','');
+	tokenOutput = setToken(uid,auth_token,user_agent,allowed_time)
     res.writeHead(200, {
-         'Content-Type': 'application/json',
-         'Content-Length': (JSON.stringify(data)).length
+         'Content-Type': 'text/html',
+         'Content-Length': ('Successfull').length
          })
-
-    console.log(data);
-    res.end(JSON.stringify(data));
+    res.end('Successfull');
 })
 
 
+app.post('/mail',async function(req,res){
+	async function getDetails(uid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from users where uid = ${uid}`,(err,result) => {
+				resolve(result)
+			})
+		});
+	}
+	uid = req.query.uid;
+	userDetails = await getDetails(uid);
+	if ( userDetails.length != 1){
+		res.status(404).end("User not found");
+		return false;
+	}
+	mailOptions = {
+		to: userDetails[0].email,
+		subject: req.query.subject,
+		html: req.query.Content
+	};
+	data = await mail.sendMail(mailOptions);
+	res.end(JSON.stringify(data));
+	console.log(JSON.stringify(data));
+
+
+
+
+})
 
 
 app.post('/addUser',function(req,res) {
