@@ -281,7 +281,7 @@ app.get('/nextSongs',async function(req,res){
 			})
 		});
 	}
-	let output = await listNextHistory()
+	let output = await listNextSongs()
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
 	})
