@@ -267,6 +267,29 @@ app.get('/history',async function(req,res){
 
 })
 
+app.get('/nextSongs',async function(req,res){
+	function listNextSongs(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from next_tracks`,(err,result) => {
+				if(err)
+				{
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	let output = await listNextHistory()
+	res.writeHead(200, {
+		'Content-Type': 'text/html',
+	})
+	console.log(output);
+	res.end(JSON.stringify(output));
+
+})
+
 app.get('/userhistory',async (req,res)=>{
 	uid = req.query.uid;
 	if(uid === undefined)
