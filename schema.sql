@@ -88,7 +88,7 @@ create table uhistory(
 	uid		bigint not null,
 	to_oper		int not null,
 	tid		bigint not null,
-	odate		date,
+	odate		datetime,
 	foreign key (tid) references track(tid),
 	foreign key (uid) references users(uid),
 	check (to_oper>=0 and to_oper<=2)
