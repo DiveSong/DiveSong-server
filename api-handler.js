@@ -109,10 +109,10 @@ app.get('/song',function(req,res) {
 
 app.post('/like',async function(req,res) {
 
-	async function getAuthenticate(uid,auth_token){
+	async function getAuthenticate(uid){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from authenticate where uid = ${uid} and auth_token = ${auth_token}`,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} `,(err,result) => {
 				resolve(result)
 			})
 		});
