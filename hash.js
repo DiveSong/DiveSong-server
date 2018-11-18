@@ -12,7 +12,7 @@ functions.sha512 = function(password, salt){
     var hash = crypto.createHmac('sha512', salt);
     return {
 	salt:salt,
-	passwordHash:value
+	passwordHash:value	//will be digested later
     };
 };
 

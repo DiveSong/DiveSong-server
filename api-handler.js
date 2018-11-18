@@ -9,8 +9,10 @@ const package = require('./package');
 const app=express();
 const hash = require('./hash');
 const crypto = require('crypto');
-app.use(cookieParser())
 const fileSystem=require("fs");
+const config = require('./config');
+
+app.use(cookieParser())
 
 sql = {
 host	: creds.sql.host,
@@ -219,7 +221,28 @@ app.post('/like',async function(req,res) {
 });
 
 
+app.get('/songlist',async function(req,res){
+	function listSongs(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from track`,(err,result) => {
+				if(err)
+				{
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	let output = await listSongs()
+	res.writeHead(200, {
+		'Content-Type': 'text/html',
+	})
+	console.log(output);
+	res.end(JSON.stringify(output));
 
+})
 
 app.post('/updateUser',async function(req,res) {
 
@@ -346,8 +369,6 @@ app.post('/addUser',function(req,res) {
 
 
 
-var server = app.listen(8081,'10.0.34.28',function(){
-
-    var port=server.address().port
-    console.log("app listening at http://%s:",port)
+var server = app.listen(config.host.port,config.host.hostname,function(){
+    console.log(`app listening at http://${config.host.hostname}:${config.host.port}`)
 })
