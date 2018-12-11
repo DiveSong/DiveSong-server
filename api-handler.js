@@ -70,8 +70,7 @@ app.get('/song',function(req,res) {
 		.then((filePath)=>{
 			console.log(`2: ${filePath}`)
 			if(typeof(filePath) === 'string'){
-				let stat = fileSystem.statSync(filePath);
-				return { "stat": stat,"filePath":filePath};
+				return { "filePath":filePath};
 			}
 			else{
 				console.log("filePath must be a string. Instead got "+typeof(filePath));
@@ -80,15 +79,7 @@ app.get('/song',function(req,res) {
 			console.log("Reject after second then "+reason)
 		})
 		.then( fileSend =>{
-
-			var readStream = fileSystem.createReadStream(fileSend.filePath);
-			res.writeHead(200, {
-				'Content-Type': 'audio/mpeg',
-				'Content-Length': fileSend.stat.size
-		    })
-			readStream.on('open', function () {
-				readStream.pipe(res);
-		    });
+			res.sendFile(fileSend.filePath);
 		},reason =>{
 			console.log("Reject after third then "+reason)
 			return reason
@@ -105,15 +96,12 @@ app.get('/song',function(req,res) {
 });
 
 
-
-
-
 app.post('/like',async function(req,res) {
 
 	async function getAuthenticate(uid,auth_token){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from authenticate where uid = ${uid} and auth_token = ${auth_token}`,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
 				resolve(result)
 			})
 		});
@@ -161,21 +149,25 @@ app.post('/like',async function(req,res) {
 		});
 	}
 
-	console.log(req.cookies);
 	tid=req.query.tid;
 	operation = req.query.operation;
-	uid = Number(req.cookies.uid);
-	user_agent = req.headers['user-agent']
-	auth_token = req.cookies.auth_token
-
-	authenticateEntry = await getAuthenticate(uid,auth_token).then(result=>{return result;},reason=>{console.error(reason);});
+	uid = Number(req.query.uid);
+	user_agent = req.query['user-agent']
+	auth_token = req.query.auth_token
 
 	if(tid === undefined || operation === undefined ){
 		res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
-		return false;
-	}else if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry[0] === undefined) {
-		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 1;
 	}
+
+	authenticateEntry = await getAuthenticate(uid,auth_token)
+
+	if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry === undefined || authenticateEntry.length === 0 || authenticateEntry[0] === undefined) {
+		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 2;
+	}
+
+
 
 	console.log(authenticateEntry);
 
@@ -222,12 +214,94 @@ app.post('/like',async function(req,res) {
 
 });
 
-
-app.get('/songlist',async function(req,res){
-	function listSongs(){
+app.post('/request',async function(req,res){
+	function getAuthenticate(uid,auth_token){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from track`,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+
+	tid=req.query.tid;
+	uid = Number(req.query.uid);
+	user_agent = req.query['user-agent']
+	auth_token = req.query.auth_token
+
+	authenticateEntry = await getAuthenticate(uid,auth_token)
+
+	if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry === undefined || authenticateEntry.length === 0 || authenticateEntry[0] === undefined) {
+		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 2;
+	}
+
+	let authentic = (user_agent,auth_token,authenticateEntry) =>{
+		allowed_time = new Date(authenticateEntry[0].tme.getTime() + 30*24*60*60*1000)
+		if(user_agent === authenticateEntry[0].user_agent && auth_token === authenticateEntry[0].auth_token && allowed_time > new Date()){
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+
+	async function isRequested(tid){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from req_list where tid = ${tid} `,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+
+	}
+	async function request(tid){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			requested = await isRequested(tid);
+			if(requested === undefined || requested.length === 0 ){
+				query = `insert into req_list values ("${new Date().toISOString().replace('T',' ').replace('Z','')}",${tid},${1})`;
+			}
+			else {
+				query = `update req_list set num_req = ${requested[0].num_req+1} where tid = ${tid}`
+			}
+			connection.query(query,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+
+	request_result = await request(tid);
+	if(request_result === undefined){
+		res.status(500).send("Server Error")
+	}
+	else {
+		res.status(200).send("Ok")
+	}
+
+})
+
+app.get('/songlist',async function(req,res){
+	function listSongs(uid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			query = `select * from track left join (select * from uhistory where uid = 0 ) as uh on track.tid=uh.tid `
+			if( uid !== undefined){
+				query = `select * from track left join (select * from uhistory where uid = ${uid} ) as uh on track.tid=uh.tid `
+			}
+			connection.query(query,(err,result) => {
 				if(err)
 				{
 					console.error(err);
@@ -237,6 +311,7 @@ app.get('/songlist',async function(req,res){
 			})
 		});
 	}
+	uid = req.query.uid;
 	let output = await listSongs()
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
@@ -246,7 +321,7 @@ app.get('/songlist',async function(req,res){
 
 })
 
-app.get('/history',async function(req,res){
+app.get('/trackHistory',async function(req,res){
 	function listSongsHistory(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
@@ -320,6 +395,8 @@ app.get('/userhistory',async (req,res)=>{
 
 })
 
+/*
+// We aren't letting user update information in Version 1.0
 app.post('/updateUser',async function(req,res) {
 
 	async function getAuthenticate(uid,auth_token){
@@ -332,9 +409,9 @@ app.post('/updateUser',async function(req,res) {
 	}
 
 	console.log(req.query);
-	uid = Number(req.cookies.uid);
-	user_agent = req.headers['user-agent']
-	auth_token = req.cookies.auth_token
+	uid = Number(req.query.uid);
+	user_agent = req.query['user-agent']
+	auth_token = req.query.auth_token
 
 
 	authenticateEntry = await getAuthenticate(uid,auth_token).then(result=>{return result;},reason=>{console.error(reason);});
@@ -394,7 +471,7 @@ app.post('/updateUser',async function(req,res) {
     }
 
 })
-
+*/
 
 app.post('/login',async function(req,res) {
 
@@ -410,13 +487,62 @@ app.post('/login',async function(req,res) {
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
 			connection.query(`insert into authenticate values (${uid},'${auth_token}','test_mac','${user_agent}','${allowed_time}')`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
 				resolve(result);
 			})
 		});
 	}
-	user_agent = req.headers['user-agent']
-	uid = req.query.uid;
-    hmac=JSON.parse(req.query.hmac);
+	async function getUid(uname){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from users where uname = "${uname}" or email = "${uname}"`,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				else if(result === undefined ||  result[0] === undefined || result[0].uid === undefined){
+					resolve(undefined);
+				}
+				else {
+					resolve(result[0].uid);
+					console.log(result[0].uid);
+				}
+			})
+		});
+	}
+	async function tokenExists(auth_token){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from authenticate where auth_token = "${auth_token}"`,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				if(result === undefined ||  result[0] === undefined || result.length === 0){
+					resolve(0);
+				}
+				else {
+					resolve(1);
+				}
+			})
+		});
+	}
+
+	user_agent = req.query["user-agent"]
+	uname = req.query.uname;
+	if(uname === undefined){
+		res.status(401).send("Bad Credentials")
+		return 1;
+	}
+	uid = await getUid(uname);
+	if (uid === undefined ){
+		res.status(401).send("Bad Credentials")
+		return 1;
+	}
+    password=req.query.password
 	if ( req.query.secret !== creds.client.secret )
 	{
 		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
@@ -426,19 +552,23 @@ app.post('/login',async function(req,res) {
 		res.status(403).end('User not registered')
 		return false;
 	}
-	outputHash = hash.digestHmac(hmac,userHash[0].salt);
+	outputHash = hash.sha512(password,userHash[0].salt);
+	outputHash = outputHash['passwordHash'];
 	if (outputHash != userHash[0].passhash){
-		res.status(401).end('Wrong Credentials')
+		res.status(401).end('Wrong Credentials<br>'+outputHash+"<br>"+userHash[0].salt)
 	}
-	auth_token = crypto.randomBytes(256).toString('hex');
+	do{
+		auth_token = crypto.randomBytes(128).toString('hex');
+	}while(await tokenExists(auth_token))
 	allowed_time = new Date(new Date() + 30*24*60*60*1000).toISOString();
-	allowed_time.replace('T',' ').replace('Z','');
-	tokenOutput = setToken(uid,auth_token,user_agent,allowed_time)
-    res.writeHead(200, {
+	allowed_time = allowed_time.replace('T',' ').replace('Z','');
+	tokenOutput = await setToken(uid,auth_token,user_agent,allowed_time)
+	res.writeHead(200, {
          'Content-Type': 'text/html',
-         'Content-Length': ('Successfull').length
+         'Content-Length': (auth_token).length
          })
-    res.end('Successfull');
+    res.end(auth_token);
+
 })
 
 
@@ -458,11 +588,12 @@ app.post('/mail',async function(req,res){
 		return false;
 	}
 	mailOptions = {
+		from: "DiveSong Server",
 		to: userDetails[0].email,
 		subject: req.query.subject,
 		html: req.query.Content
 	};
-	data = await mail.sendMail(mailOptions);
+	data = mail.sendMail(mailOptions);
 	res.end(JSON.stringify(data));
 	console.log(JSON.stringify(data));
 
@@ -472,28 +603,65 @@ app.post('/mail',async function(req,res){
 })
 
 
-app.post('/addUser',function(req,res) {
+app.post('/addUser',async function(req,res) {
+	async function setUserDetails(user){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`insert into users (uname,email,fname,lname,everify) values ("${user.uname}","${user.email}","${user.fname}","${user.lname}",1)`,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+	async function getDetails(user){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from users where uname = "${user.uname}"`,(err,result) => {
+				resolve(result)
+			})
+		});
+	}
+	async function setUserPassword(user){
+		return new Promise(async function(resolve, reject) {
+			userDetails = await getDetails(user)
+			console.log(userDetails);
+			uid = userDetails[0].uid;
+			hashSalt = hash.saltHashPassword(user.password);
+			connection = mysql.createConnection(sql);
+			connection.query(`insert into pass values (${uid},"${hashSalt.passwordHash}","${hashSalt.salt}")`,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
     var user= {
-
-        "uid":req.query.uid,
         "uname":req.query.uname,
         "email":req.query.email,
         "fname":req.query.fname,
         "lname":req.query.lname,
-        "everify":req.query.everify
-
+		"password": req.query.password
     }
-
-    data={};
-    data=user;
-    console.log(data);
-
-    res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Content-Length': (JSON.stringify(data)).length
-        })
-
-     res.end(JSON.stringify(data));
+	if(user===undefined || user.uname === undefined || user.email === undefined || user.fname === undefined || user.lname === undefined || user.password === undefined)
+	{
+		res.status(400).send("Bad Request");
+	}
+	insertDetails = await setUserDetails(user);
+	if (insertDetails === undefined){
+		res.status(409).send("Username or E-Mail already exists")
+		return 1;
+	}
+	insertPassword = await setUserPassword(user);
+	if(insertPassword === undefined){
+		res.status(500).send("Error occured");
+		return 2;
+	}
+    res.status(200).send("Successful");
 
 })
 

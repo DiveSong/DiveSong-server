@@ -4,9 +4,6 @@ var mysql = require('mysql');
 var execSync = require('child_process').execSync;
 let creds = require('./auth_details')
 
-let promise = new Promise((req,res)=>{
-console.log('promise started')
-})
 
 
 var dta={}
@@ -57,20 +54,19 @@ function value(dta)
 }
 
 
-var con = mysql.createConnection({
+var sql = {
   host: creds.sql.host,
   user: creds.sql.user,
   password: creds.sql.password,
   database: "divesong"
-});
+};
 
 
 let parsed = require('./parser.js')
-console.log('test1')
+
 parsed.formats.forEach((x)=>{frmts=frmts+"\\."+x+"$|"})
 frmts=frmts.substring(0,frmts.length-1)
 
-console.log('test2')
 let dir = '';
 for(var i=0;i<parsed.path.length;i++)
 {
@@ -81,6 +77,24 @@ pth=paths.split('\n')
 pth.pop()
 console.log(pth.length)
 
+function runQuery(query,error_string,success_string){
+	return new Promise(function(resolve, reject) {
+		let connection = mysql.createConnection(sql);
+		connection.query(query,(err,result) => {
+			if(err){
+				console.error(err);
+				console.log(error_string);
+				connection.end()
+				resolve(0)
+			}
+			else{
+				console.log(success_string);
+				connection.end()
+				resolve(result)
+			}
+		})
+	})
+}
 
 var fth=[]
 for(var p=0;p<pth.length;p++)
@@ -96,12 +110,14 @@ for(var p=0;p<pth.length;p++)
 		fth[p]='NULL'
 	}
 }
-console.log(pth,fth);
-console.log('test3')
-con.connect(function(err) {
+
+async function main(){
+	var result
 	for(let i=0;i<pth.length;i++)
 	{
-		mi({maxBuffer:1.797693134862315E+308},pth[i]).then(function(data) {
+		console.log(pth[i]);
+		;
+		mi({maxBuffer:1.797693134862315E+308},pth[i]).then(async function(data) {
 			dta=data[0]
 			console.log("\n")
 			tname=artists=genre=dur=bit=rdate='NULL'
@@ -142,55 +158,31 @@ con.connect(function(err) {
 			var q3=`UPDATE track SET exist=exist+1 WHERE tpath='${pth[i]}'`
 			var q4=`UPDATE track t,albums a SET t.track_no=a.num_tracks WHERE t.tpath='${pth[i]}' AND t.aname=a.name`
 
-			con.query(q1, function (err, result) {
-				if(!err)
-				{
-					console.log('1 track inserted')
-					con.query(q2, function (errr, result) {
-					//if (errr) throw errr;
-					console.log("1 album record inserted");
-					});
-					con.query(q4, function (errr, result) {
-					console.log("update track_no");
-					});
-				}
-				else
-				{
-					con.query(q3, function (err, result) {
-					if (err) {console.log('add exist+1');throw err;}
-					console.log("add exist+1");
-					});
-				}
-			});
+			result = await runQuery(q1,"",'1 track inserted')
+			if(result)
+			{
+				result = await runQuery(q2,"","1 album record inserted");
+				result = await runQuery(q4,"","update track_no");
+			}
+			else
+			{
+				result = await runQuery(q3,'add exist+1','add exist+1')
+			}
+
 
 		}).catch(function (e){console.log('at catch');console.error(e)});//end of medio-info function
 	}//end of for loop
 
-	console.log('test4')
 	var q5='UPDATE track t,albums a SET t.album_id=a.album_id WHERE t.aname=a.name'
 	var q6='UPDATE track t,albums a SET a.num_tracks=a.num_tracks-1 WHERE t.exist=0 AND t.album_id=a.album_id'
 	var q7='DELETE FROM albums WHERE num_tracks=0'
 	var q8='DELETE FROM track WHERE exist=0'
 	var q9='UPDATE track SET exist=0'
 
-	con.query(q5, function (err, result) {
-		if (err) {console.log('album_id');throw err;}
-		console.log('album_id')
-	})
-	con.query(q6, function (err, result) {
-		if (err) {console.log('tracks -1');throw err;}
-		console.log('tracks -1')
-	})
-	con.query(q7, function (err, result) {
-		if (err) {console.log('deletion album');throw err;}
-		console.log('deletion album')
-	});
-	con.query(q8, function (err, result) {
-		if (err) {console.log('deletion track');throw err;}
-		console.log('deletion track')
-	});
-	con.query(q9, function (err, result) {
-		if (err) {console.log('updating exist');throw err;}
-		console.log('updating exist')
-	});
-})//end of database connection
+	result = await runQuery(q5,"album_id","album_id");
+	result = await runQuery(q6,'tracks -1','tracks -1')
+	result = await runQuery(q7,'deletion album','deletion album')
+	result = await runQuery(q8,'deletion track','deletion track')
+	result = await runQuery(q9,'updating exist','updating exist')
+}//end of database connection
+main()
