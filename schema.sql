@@ -27,7 +27,7 @@ create table authenticate(
 
 create table albums(
 	album_id	bigint primary key auto_increment,
-	name		varchar(255) not null unique,
+	name	 varchar(255) not null unique,
 	rdate		date,
 	num_tracks	int,
 	check (num_tracks>0)
@@ -37,6 +37,7 @@ create table track(
 	tid		bigint	primary key	auto_increment,
 	name		varchar(255),
 	tpath		varchar(511) unique,
+	imgpath	varchar(511) unique,
 	album_id	bigint,
 	aname		varchar(511),
 	artists		varchar(511),
@@ -88,7 +89,7 @@ create table uhistory(
 	uid		bigint not null,
 	to_oper		int not null,
 	tid		bigint not null,
-	odate		datetime,
+	odate		date,
 	foreign key (tid) references track(tid),
 	foreign key (uid) references users(uid),
 	check (to_oper>=0 and to_oper<=2)
