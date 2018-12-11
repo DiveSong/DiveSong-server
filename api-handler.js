@@ -95,15 +95,12 @@ app.get('/song',function(req,res) {
 });
 
 
-
-
-
 app.post('/like',async function(req,res) {
 
-	async function getAuthenticate(uid){
+	async function getAuthenticate(uid,auth_token){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from authenticate where uid = ${uid} `,(err,result) => {
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
 				resolve(result)
 			})
 		});
@@ -151,21 +148,25 @@ app.post('/like',async function(req,res) {
 		});
 	}
 
-	console.log(req.cookies);
 	tid=req.query.tid;
 	operation = req.query.operation;
-	uid = Number(req.cookies.uid);
-	user_agent = req.headers['user-agent']
-	auth_token = req.cookies.auth_token
-
-	authenticateEntry = await getAuthenticate(uid,auth_token).then(result=>{return result;},reason=>{console.error(reason);});
+	uid = Number(req.query.uid);
+	user_agent = req.query['user-agent']
+	auth_token = req.query.auth_token
 
 	if(tid === undefined || operation === undefined ){
 		res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
-		return false;
-	}else if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry[0] === undefined) {
-		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 1;
 	}
+
+	authenticateEntry = await getAuthenticate(uid,auth_token)
+
+	if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry === undefined || authenticateEntry.length === 0 || authenticateEntry[0] === undefined) {
+		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 2;
+	}
+
+
 
 	console.log(authenticateEntry);
 
@@ -212,16 +213,94 @@ app.post('/like',async function(req,res) {
 
 });
 
+app.post('/request',async function(req,res){
+	function getAuthenticate(uid,auth_token){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+
+	tid=req.query.tid;
+	uid = Number(req.query.uid);
+	user_agent = req.query['user-agent']
+	auth_token = req.query.auth_token
+
+	authenticateEntry = await getAuthenticate(uid,auth_token)
+
+	if (uid === undefined || isNaN(uid) || user_agent === undefined || auth_token === undefined || authenticateEntry === undefined || authenticateEntry.length === 0 || authenticateEntry[0] === undefined) {
+		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 2;
+	}
+
+	let authentic = (user_agent,auth_token,authenticateEntry) =>{
+		allowed_time = new Date(authenticateEntry[0].tme.getTime() + 30*24*60*60*1000)
+		if(user_agent === authenticateEntry[0].user_agent && auth_token === authenticateEntry[0].auth_token && allowed_time > new Date()){
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+
+	async function isRequested(tid){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from req_list where tid = ${tid} `,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+
+	}
+	async function request(tid){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			requested = await isRequested(tid);
+			if(requested === undefined || requested.length === 0 ){
+				query = `insert into req_list values ("${new Date().toISOString().replace('T',' ').replace('Z','')}",${tid},${1})`;
+			}
+			else {
+				query = `update req_list set num_req = ${requested[0].num_req+1} where tid = ${tid}`
+			}
+			connection.query(query,(err,result) => {
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+
+	request_result = await request(tid);
+	if(request_result === undefined){
+		res.status(500).send("Server Error")
+	}
+	else {
+		res.status(200).send("Ok")
+	}
+
+})
 
 app.get('/songlist',async function(req,res){
 	function listSongs(uid){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			query = `select * from track `
-			if( uid === undefined){
-				query = `select * from track left join uhistory on tid where uid = ${uid}`
+			query = `select * from track left join (select * from uhistory where uid = 0 ) as uh on track.tid=uh.tid `
+			if( uid !== undefined){
+				query = `select * from track left join (select * from uhistory where uid = ${uid} ) as uh on track.tid=uh.tid `
 			}
-			connection.query(`select * from track`,(err,result) => {
+			connection.query(query,(err,result) => {
 				if(err)
 				{
 					console.error(err);
@@ -231,6 +310,7 @@ app.get('/songlist',async function(req,res){
 			})
 		});
 	}
+	uid = req.query.uid;
 	let output = await listSongs()
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
