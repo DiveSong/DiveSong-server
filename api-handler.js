@@ -1,9 +1,10 @@
+
 const express=require("express");
 const path = require('path');
 const creds = require('./auth_details')
 const mysql = require('mysql');
-const db = require('./database');
-const q = require('q');
+//const db = require('./database');
+//const q = require('q');
 const cookieParser = require('cookie-parser');
 const package = require('./package');
 const app=express();
