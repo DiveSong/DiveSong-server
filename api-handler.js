@@ -283,6 +283,21 @@ app.post('/request',async function(req,res){
 		});
 
 	}
+	async function isRequestedByUser(uid,tid){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from uhistory where tid = ${tid} and uid=${uid} and to_oper=0 `,(err,result) => {
+				if(err){
+					console.error(err);
+
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+
+	}
+
 	async function updateUhistory(uid,tid){
 		return new Promise(async function(resolve, reject) {
 			connection = mysql.createConnection(sql);
@@ -315,7 +330,12 @@ app.post('/request',async function(req,res){
 			})
 		});
 	}
-
+	requestedByUser = await isRequestedByUser(uid,tid);
+	if( requestedByUser!= undefined && requestedByUser.length>0)
+	{
+		res.status(200).send("Already requested");
+		return 0;
+	}
 	request_result = await request(tid);
 	if(request_result === undefined){
 		res.status(500).send("Server Error")
