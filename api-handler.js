@@ -16,6 +16,7 @@ const mail = require('./mail');
 
 
 app.use(function(req, res, next) {
+	//Allow CORS
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
@@ -30,8 +31,7 @@ database: 'divesong'
 }
 
 
-app.get('/song',function(req,res) {
-	//res.status(200).send(`Ok ${req.query.trackid} `)
+app.get('/song',function(req,res) {	//Send songs to download
 	console.log(req.query)
 	if( req.query.trackid === undefined || isNaN(Number(req.query.trackid)) ){
 		res.status(400).send('Track ID required as an integer')
@@ -229,7 +229,7 @@ app.post('/like',async function(req,res) {
 		 res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
 	 }
 
-});
+});	//API to like a track
 
 app.post('/request',async function(req,res){
 	function getAuthenticate(uid,auth_token){
@@ -344,7 +344,7 @@ app.post('/request',async function(req,res){
 		res.status(200).send("Ok")
 	}
 
-})
+})	//API to request a track
 
 app.get('/songlist',async function(req,res){
 	function listSongs(uid){
@@ -373,13 +373,13 @@ app.get('/songlist',async function(req,res){
 	console.log(JSON.stringify(output));
 	res.end(JSON.stringify(output));
 
-})
+})	//API to get all the songs present. having uid will also tell 'like'
 
-app.get('/search',async function(req,res){
+app.get('/search',async function(req,res){	//API to search via a word if the word isn't defined, will work like songlist + mostPlayed
 	async function getPlayed(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select track.tid as id, name,cn.number as number from track inner join (select tid,count(tid) as number from thistory group by tid order by count(tid) desc) as cn on track.tid=cn.tid;`,(err,result)=>{
+			connection.query(`select track.tid as id, name,cn.number as number from track inner join (select tid,count(tid) as number from thistory group by tid order by count(tid) desc) as cn on track.tid=cn.tid limit 10`,(err,result)=>{
 				if(err){
 					console.error(err);
 					resolve(undefined);
@@ -413,19 +413,29 @@ app.get('/search',async function(req,res){
 	maxPlayed = req.query.maxPlayed;
 	uid = req.query.uid;
 	searchQuery =req.query.search;
-	if(maxPlayed == '1'){
-		list = await getPlayed();
-		list = list.slice(0,10);
-		if(list == undefined){
-			res.status(500).send("Internal Error")
-			return 1;
-		}
-		listString = JSON.stringify(list);
-		res.status(200).send(listString);
-		console.log(listString)
-		return 0;
+	list = await getPlayed();
+	if(list == undefined){
+		res.status(500).send("Internal Error")
+		return 1;
 	}
+	console.log(list);
+	list = list.slice(0,10);
+
+
 	let output = await listSongsBySearch(uid,searchQuery)
+	for( j in output ){
+		output[j].maxPlayed=0;
+	}
+	for (i in list){
+		t_tid=list[i].id;
+		for ( j in output ){
+			if (t_tid == output[j].id){
+				output[j].maxPlayed=1
+			}
+		}
+	}
+
+
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
 	})
@@ -455,7 +465,7 @@ app.get('/trackHistory',async function(req,res){
 	console.log(output);
 	res.end(JSON.stringify(output));
 
-})
+})	// API to return contents from thistory table. For future upgrade
 
 app.get('/nextSongs',async function(req,res){
 	function listNextSongs(){
@@ -478,7 +488,8 @@ app.get('/nextSongs',async function(req,res){
 	console.log(output);
 	res.end(JSON.stringify(output));
 
-})
+})	//API to get list of nextSongs - from table next_tracks
+
 
 app.get('/userhistory',async (req,res)=>{
 	uid = req.query.uid;
@@ -506,7 +517,7 @@ app.get('/userhistory',async (req,res)=>{
 	console.log(output);
 	res.end(JSON.stringify(output));
 
-})
+})	// get user's history from uhistory
 
 /*
 // We aren't letting user update information in Version 1.0
@@ -708,7 +719,7 @@ app.post('/login',async function(req,res) {
          })
     res.end(JSON.stringify(content));
 
-})
+})	//API to check if given Credentials satisfied and client is real
 
 app.get('/detailNextSong',async function (req,res){
 	async function getNext(){
@@ -744,7 +755,7 @@ app.get('/detailNextSong',async function (req,res){
 	details = details[0];
 	console.log(details);
 	res.status(200).send(JSON.stringify(details));
-})
+})	// Get the details of the nextSong to be played
 
 app.get('/playNextSong',async function(req,res) {
 	async function getNext(){
@@ -802,7 +813,7 @@ app.get('/playNextSong',async function(req,res) {
 	});
 
 
-})
+})	// Get stream of the nextSong
 
 app.get('/mostPlayed',async function(req,res){
 	async function getPlayed(){
@@ -856,7 +867,7 @@ app.post('/mail',async function(req,res){
 
 
 
-})
+})	// Mail a user
 
 
 app.post('/addUser',async function(req,res) {
@@ -919,10 +930,11 @@ app.post('/addUser',async function(req,res) {
 	}
     res.status(200).send(JSON.stringify({Successful:"Successful"}));
 
-})
+})	// Sign Up API
 
 
 
 var server = app.listen(config.host.port,config.host.hostname,function(){
     console.log(`app listening at http://${config.host.hostname}:${config.host.port}`)
+
 })
