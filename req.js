@@ -480,7 +480,7 @@ async function main()
 		await update_nxtreq();
 		return 1;
 		// req = require('./req');
-	},duration*1000)
+	},1000)
 }
 
 async function toRun(){
