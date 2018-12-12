@@ -19,41 +19,6 @@ var dur='NULL'
 var bit='NULL'
 var rdate='NULL'
 
-function value(dta)
-{
-
-		if(dta['general']['recorded_date']!=undefined)
-			rdate='\''+parseInt(dta['general']['recorded_date']).toString()+'-01-01\''
-
-		if(dta['general']['duration']!=undefined)
-			dur=parseInt(dta['general']['duration'][0]/1000)
-
-		if(dta['general']['overall_bit_rate']!=undefined)
-			bit=parseInt(dta['general']['overall_bit_rate'][0]/1000)
-
-
-		if(dta['general']['title']!=undefined)
-			tname='\''+dta['general']['title']+'\''
-		else
-			tname='\''+dta['general']['file_name']+'\''
-
-
-		if(dta['general']['performer']!=undefined && dta['general']['composer']!=undefined)
-			artists='\''+dta['general']['performer']+' '+dta['general']['composer']+'\''
-		else if(dta['general']['performer']==undefined && dta['general']['composer']!=undefined)
-			artists='\''+dta['general']['composer']+'\''
-		else if(dta['general']['performer']!=undefined && dta['general']['composer']==undefined)
-			artists='\''+dta['general']['performer']+'\''
-
-
-		if(dta['general']['genre']!=undefined)
-			genre='\''+dta['general']['genre']+'\''
-
-		if(dta['general']['album']!=undefined)
-			alname='\''+dta['general']['album']+'\''
-}
-
-
 var sql = {
   host: creds.sql.host,
   user: creds.sql.user,
@@ -128,10 +93,27 @@ async function main(){
 
 			if(dta['general']['duration']!=undefined)
 				dur=parseInt(dta['general']['duration'][0]/1000)
+			else {
+				var tmp=execSync(`ffmpeg -i ${pth[i]} 2>&1 | grep Duration | awk '{print $2}' | tr -d ,`)
+				if(tmp!=undefined)
+				{
+					tmp=String(tmp)
+					tmp=tmp.substring(0,tmp.length-1).split(':')
+					dur = parseInt(tmp[2])+tmp[1]*60+tmp[0]*60*60
+				}
+				else if(dur==undefined || isNaN(dur)) {
+					dur='NULL'
+				}
+			}
 
 			if(dta['general']['overall_bit_rate']!=undefined)
 				bit=parseInt(dta['general']['overall_bit_rate'][0]/1000)
-
+			else
+			{
+				bit=parseInt(execSync(`ffmpeg -i ${pth[i]} 2>&1 | grep bitrate | awk '{print $6}'`))
+				if(bit==undefined || isNaN(bit))
+					bit='NULL'
+			}
 
 			if(dta['general']['title']!=undefined)
 				tname='\''+dta['general']['title']+'\''
