@@ -14,7 +14,13 @@ const fileSystem=require("fs");
 const config = require('./config');
 const mail = require('./mail');
 
-app.use(cookieParser())
+
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+
 
 sql = {
 host	: creds.sql.host,
@@ -155,7 +161,9 @@ app.post('/like',async function(req,res) {
 	user_agent = req.query['user-agent']
 	auth_token = req.query.auth_token
 
-	if(tid === undefined || operation === undefined ){
+	console.log(req.query)
+
+	if(tid === undefined || operation === undefined || isNaN(tid) || isNaN(uid)){
 		res.status(400).send(`<b>400</b> Bad Request<hr><center>${package.name} v.${package.version}`)
 		return 1;
 	}
@@ -186,20 +194,20 @@ app.post('/like',async function(req,res) {
 	if(operation=='like' || operation=='dislike'){
 		if(authentic(user_agent,auth_token,authenticateEntry)){
 			likeExists = await checkLiked(uid,tid,operation);
-			console.log(likeExists);
+			// console.log(likeExists);
 			if(likeExists!==undefined && likeExists[0] != 0 && likeExists[1] == 0)
 			{
 				status = await removeLiked(uid,tid)
 				if(status === true )
 				{
-					console.log(1);
+					// console.log(1);
 					status = await like(uid,tid,operation)
 				}
 			}else if(likeExists!==undefined &&likeExists[0] != 0 && likeExists[1] == 1){
 				status = await removeLiked(uid,tid)
 			} else if(likeExists!==undefined && likeExists[0]!=1){
 				result = await like(uid,tid,operation)
-				console.log(result)
+				// console.log(result)
 			}
 			res.writeHead(200, {
 				'Content-Type': 'text/html',
@@ -332,7 +340,7 @@ app.get('/songlist',async function(req,res){
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
 	})
-	// console.log(output);
+	console.log(JSON.stringify(output));
 	res.end(JSON.stringify(output));
 
 })
@@ -490,6 +498,14 @@ app.post('/updateUser',async function(req,res) {
 */
 
 app.post('/login',async function(req,res) {
+	async function getDetails(uid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from users where uid = "${uid}"`,(err,result) => {
+				resolve(result)
+			})
+		});
+	}
 
 	async function getHash(uid){
 		return new Promise(function(resolve, reject) {
@@ -562,6 +578,7 @@ app.post('/login',async function(req,res) {
 	if ( req.query.secret !== creds.client.secret )
 	{
 		res.status(401).send(`<b>401</b> Unauthorized<hr><center>${package.name} v.${package.version}`)
+		return 0;
 	}
     userHash = await getHash(uid);
 	if(userHash.length != 1 ){
@@ -572,6 +589,7 @@ app.post('/login',async function(req,res) {
 	outputHash = outputHash['passwordHash'];
 	if (outputHash != userHash[0].passhash){
 		res.status(401).end('Wrong Credentials<br>'+outputHash+"<br>"+userHash[0].salt)
+		return 0;
 	}
 	do{
 		auth_token = crypto.randomBytes(128).toString('hex');
@@ -579,14 +597,121 @@ app.post('/login',async function(req,res) {
 	allowed_time = new Date(new Date() + 30*24*60*60*1000).toISOString();
 	allowed_time = allowed_time.replace('T',' ').replace('Z','');
 	tokenOutput = await setToken(uid,auth_token,user_agent,allowed_time)
+	user = await getDetails(uid);
+	if (user == undefined || user.length <1 || user[0]== undefined){
+		res.status(403).end('User not registered')
+		return 0;
+	}
+	user = user[0]
+	content = {
+		uname: user.uname,
+		email: user.email,
+		fname: user.fname,
+		lname: user.lname,
+		uid: uid,
+		auth_token: auth_token
+	}
+	console.log(content);
 	res.writeHead(200, {
-         'Content-Type': 'text/html',
-         'Content-Length': (auth_token).length
+         'Content-Type': 'application/json',
+         'Content-Length': JSON.stringify(content).length
          })
-    res.end(auth_token);
+    res.end(JSON.stringify(content));
 
 })
 
+app.get('/detailNextSong',async function (req,res){
+	async function getNext(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from next_tracks where ind = 1`,(err,result) => {
+				if(err || result.length <1){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+	async function getDetails(){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			next = await getNext()
+			if(next.length == 0){
+				console.log("Request list empty");
+				return undefined;
+			}
+			connection.query(`select name,artists,aname as album from track where tid=${next[0].tid}`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	details = await getDetails();
+	details = details[0];
+	console.log(details);
+	res.status(200).send(JSON.stringify(details));
+})
+app.get('/playNextSong',async function(req,res) {
+	async function getNext(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select * from next_tracks where ind = 1`,(err,result) => {
+				if(err || result.length <1){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+		});
+	}
+	async function getPath(){
+		return new Promise(async function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			next = await getNext()
+			if(next.length == 0){
+				console.log("Request list empty");
+				return undefined;
+			}
+			connection.query(`select tpath from track where tid=${next[0].tid}`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	filePath = await getPath();
+	if(filePath ==undefined || filePath.length<1){
+		res.status(500).send("Internal error");
+		return 0;
+	}
+	filePath=filePath[0].tpath;
+	console.log(filePath);
+	var stat = fileSystem.statSync(filePath);
+	if(filePath === undefined){
+		res.status(500).send("Internal Error");
+		return 0;
+	}
+	res.writeHead(200, {
+		'Content-Type': 'audio/mpeg',
+		'Content-Length': stat.size
+	})
+
+
+	var readStream = fileSystem.createReadStream(filePath);
+	// We replaced all the event handlers with a simple call to readStream.pipe()
+	readStream.on('open', function () {
+	// This just pipes the read stream to the response object (which goes to the client)
+	readStream.pipe(res);
+	});
+
+
+})
 
 app.post('/mail',async function(req,res){
 	async function getDetails(uid){
