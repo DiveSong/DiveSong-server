@@ -376,6 +376,19 @@ app.get('/songlist',async function(req,res){
 })
 
 app.get('/search',async function(req,res){
+	async function getPlayed(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select track.tid as id, name,cn.number as number from track inner join (select tid,count(tid) as number from thistory group by tid order by count(tid) desc) as cn on track.tid=cn.tid;`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});;
+	}
+
 	function listSongsBySearch(uid,searchQuery){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
@@ -397,9 +410,21 @@ app.get('/search',async function(req,res){
 			})
 		});
 	}
+	maxPlayed = req.query.maxPlayed;
 	uid = req.query.uid;
 	searchQuery =req.query.search;
-
+	if(maxPlayed == '1'){
+		list = await getPlayed();
+		list = list.slice(0,10);
+		if(list == undefined){
+			res.status(500).send("Internal Error")
+			return 1;
+		}
+		listString = JSON.stringify(list);
+		res.status(200).send(listString);
+		console.log(listString)
+		return 0;
+	}
 	let output = await listSongsBySearch(uid,searchQuery)
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
@@ -892,7 +917,7 @@ app.post('/addUser',async function(req,res) {
 		res.status(500).send("Error occured");
 		return 2;
 	}
-    res.status(200).send("Successful");
+    res.status(200).send(JSON.stringify({Successful:"Successful"}));
 
 })
 
