@@ -108,6 +108,7 @@ app.post('/like',async function(req,res) {
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
 			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
+
 				resolve(result)
 			})
 		});
@@ -119,8 +120,10 @@ app.post('/like',async function(req,res) {
 			connection.query(`insert into uhistory values (${uid},${operation=='like'?1:-1},${tid},'${new Date().toISOString().replace('T',' ').replace('Z','')}')`,(err,result) => {
 				if(err){
 					console.error(err);
+
 					resolve(err);
 				}
+
 				resolve(result)
 			})
 		});
@@ -131,8 +134,10 @@ app.post('/like',async function(req,res) {
 			connection.query(`delete from uhistory where uid=${uid} and tid=${tid} and (to_oper=1 or to_oper=-1)`,(err,result) => {
 				if(err){
 					console.error(err);
+
 					resolve(err);
 				}
+
 				resolve(true)
 			})
 		});
@@ -146,8 +151,10 @@ app.post('/like',async function(req,res) {
 				if(err)
 				{
 					console.error(err);
+
 					resolve(undefined);
 				}
+
 				resolve([result.length,result.length>=1?result[0].to_oper===new_oper:0])	//if second part is 1 then then don't delete and add otherwise delete and add
 
 			})
@@ -177,6 +184,7 @@ app.post('/like',async function(req,res) {
 
 
 
+	status = await removeLiked(uid,tid)
 	// console.log(authenticateEntry);
 
 
@@ -197,7 +205,6 @@ app.post('/like',async function(req,res) {
 			// console.log(likeExists);
 			if(likeExists!==undefined && likeExists[0] != 0 && likeExists[1] == 0)
 			{
-				status = await removeLiked(uid,tid)
 				if(status === true )
 				{
 					// console.log(1);
@@ -231,8 +238,10 @@ app.post('/request',async function(req,res){
 			connection.query(`select * from authenticate where uid = ${uid} and auth_token="${auth_token}" `,(err,result) => {
 				if(err){
 					console.error(err);
+
 					resolve(undefined);
 				}
+
 				resolve(result)
 			})
 		});
@@ -266,6 +275,7 @@ app.post('/request',async function(req,res){
 			connection.query(`select * from req_list where tid = ${tid} `,(err,result) => {
 				if(err){
 					console.error(err);
+
 					resolve(undefined);
 				}
 				resolve(result)
@@ -337,6 +347,40 @@ app.get('/songlist',async function(req,res){
 	}
 	uid = req.query.uid;
 	let output = await listSongs(uid)
+	res.writeHead(200, {
+		'Content-Type': 'text/html',
+	})
+	console.log(JSON.stringify(output));
+	res.end(JSON.stringify(output));
+
+})
+
+app.get('/search',async function(req,res){
+	function listSongsBySearch(uid,searchQuery){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			if (searchQuery === undefined){
+				searchQuery=''
+			}
+			query = `select track.tid as id , track.name, track.artists, aname as album ,uh.to_oper  as 'like' from track left join (select * from uhistory where uid = 0 and  to_oper<>0) as uh on track.tid=uh.tid where track.name like '%${searchQuery}%' or track.aname like '%${searchQuery}%' or track.artists like '%${searchQuery}%';`
+			if( uid !== undefined){
+				// console.log('uid is there')
+				query = `select track.tid as id , track.name, track.artists, aname as album ,uh.to_oper  as 'like' from track left join (select * from uhistory where uid = ${uid} and  to_oper<>0) as uh on track.tid=uh.tid where track.name like '%${searchQuery}%' or track.aname like '%${searchQuery}%' or track.artists like '%${searchQuery}%';`
+			}
+			connection.query(query,(err,result) => {
+				if(err)
+				{
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+		});
+	}
+	uid = req.query.uid;
+	searchQuery =req.query.search;
+
+	let output = await listSongsBySearch(uid,searchQuery)
 	res.writeHead(200, {
 		'Content-Type': 'text/html',
 	})
@@ -594,6 +638,7 @@ app.post('/login',async function(req,res) {
 	do{
 		auth_token = crypto.randomBytes(128).toString('hex');
 	}while(await tokenExists(auth_token))
+
 	allowed_time = new Date(new Date() + 30*24*60*60*1000).toISOString();
 	allowed_time = allowed_time.replace('T',' ').replace('Z','');
 	tokenOutput = await setToken(uid,auth_token,user_agent,allowed_time)
@@ -624,7 +669,7 @@ app.get('/detailNextSong',async function (req,res){
 	async function getNext(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from next_tracks where ind = 1`,(err,result) => {
+			connection.query(`select tid, mind.ind from next_tracks inner join ( select min(ind) as ind from next_tracks) as mind on mind.ind = next_tracks.ind  ;`,(err,result) => {
 				if(err || result.length <1){
 					console.error(err);
 					resolve(undefined);
@@ -655,11 +700,12 @@ app.get('/detailNextSong',async function (req,res){
 	console.log(details);
 	res.status(200).send(JSON.stringify(details));
 })
+
 app.get('/playNextSong',async function(req,res) {
 	async function getNext(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select * from next_tracks where ind = 1`,(err,result) => {
+			connection.query(`select tid, mind.ind from next_tracks inner join ( select min(ind) as ind from next_tracks) as mind on mind.ind = next_tracks.ind  ;`,(err,result) => {
 				if(err || result.length <1){
 					console.error(err);
 					resolve(undefined);
