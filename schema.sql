@@ -50,7 +50,7 @@ create table track(
 );
 
 create table thistory(
-	tid		bigint primary key,
+	tid		bigint,
 	lplayed		datetime,
 	foreign key (tid) references track(tid)
 );
