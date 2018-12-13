@@ -111,6 +111,7 @@ app.post('/like',async function(req,res) {
 
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 
@@ -126,6 +127,7 @@ app.post('/like',async function(req,res) {
 
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function removeLiked(uid,tid){
@@ -140,6 +142,7 @@ app.post('/like',async function(req,res) {
 
 				resolve(true)
 			})
+			connection.end()
 		});
 	}
 
@@ -158,6 +161,7 @@ app.post('/like',async function(req,res) {
 				resolve([result.length,result.length>=1?result[0].to_oper===new_oper:0])	//if second part is 1 then then don't delete and add otherwise delete and add
 
 			})
+			connection.end()
 
 		});
 	}
@@ -244,6 +248,7 @@ app.post('/request',async function(req,res){
 
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 
@@ -280,6 +285,7 @@ app.post('/request',async function(req,res){
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 
 	}
@@ -294,6 +300,7 @@ app.post('/request',async function(req,res){
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 
 	}
@@ -308,6 +315,7 @@ app.post('/request',async function(req,res){
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function request(tid){
@@ -328,6 +336,7 @@ app.post('/request',async function(req,res){
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	requestedByUser = await isRequestedByUser(uid,tid);
@@ -363,6 +372,7 @@ app.get('/songlist',async function(req,res){
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	uid = req.query.uid;
@@ -386,6 +396,7 @@ app.get('/search',async function(req,res){	//API to search via a word if the wor
 				}
 				resolve(result);
 			})
+			connection.end()
 		});;
 	}
 
@@ -408,6 +419,7 @@ app.get('/search',async function(req,res){	//API to search via a word if the wor
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	maxPlayed = req.query.maxPlayed;
@@ -456,6 +468,7 @@ app.get('/trackHistory',async function(req,res){
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	let output = await listSongsHistory()
@@ -479,6 +492,7 @@ app.get('/nextSongs',async function(req,res){
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	let output = await listNextSongs()
@@ -508,6 +522,7 @@ app.get('/userhistory',async (req,res)=>{
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	let output = await userHistory(uid)
@@ -604,6 +619,7 @@ app.post('/login',async function(req,res) {
 			connection.query(`select * from users where uid = "${uid}"`,(err,result) => {
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 
@@ -613,6 +629,7 @@ app.post('/login',async function(req,res) {
 			connection.query(`select * from pass where uid = ${uid}`,(err,result) => {
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function setToken(uid,auth_token,user_agent,allowed_time){
@@ -625,6 +642,7 @@ app.post('/login',async function(req,res) {
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	async function getUid(uname){
@@ -643,6 +661,7 @@ app.post('/login',async function(req,res) {
 					console.log(result[0].uid);
 				}
 			})
+			connection.end()
 		});
 	}
 	async function tokenExists(auth_token){
@@ -660,6 +679,7 @@ app.post('/login',async function(req,res) {
 					resolve(1);
 				}
 			})
+			connection.end()
 		});
 	}
 
@@ -738,6 +758,7 @@ app.get('/image',async function (req,res){
 				resolve(result[0].imgpath);
 
 			})
+			connection.end()
 		});;
 	}
 	tid = req.query.tid;
@@ -773,16 +794,17 @@ app.get('/detailNextSong',async function (req,res){
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function getDetails(){
 		return new Promise(async function(resolve, reject) {
-			connection = mysql.createConnection(sql);
 			next = await getNext()
 			if(next.length == 0){
 				console.log("Request list empty");
 				return undefined;
 			}
+			connection = mysql.createConnection(sql);
 			connection.query(`select name,artists,aname as album from track where tid=${next[0].tid}`,(err,result)=>{
 				if(err){
 					console.error(err);
@@ -790,6 +812,7 @@ app.get('/detailNextSong',async function (req,res){
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	details = await getDetails();
@@ -809,16 +832,17 @@ app.get('/playNextSong',async function(req,res) {
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function getPath(){
 		return new Promise(async function(resolve, reject) {
-			connection = mysql.createConnection(sql);
 			next = await getNext()
 			if(next.length == 0){
 				console.log("Request list empty");
 				return undefined;
 			}
+			connection = mysql.createConnection(sql);
 			connection.query(`select tpath from track where tid=${next[0].tid}`,(err,result)=>{
 				if(err){
 					console.error(err);
@@ -826,6 +850,7 @@ app.get('/playNextSong',async function(req,res) {
 				}
 				resolve(result);
 			})
+			connection.end()
 		});
 	}
 	filePath = await getPath();
@@ -867,6 +892,7 @@ app.get('/mostPlayed',async function(req,res){
 				}
 				resolve(result);
 			})
+			connection.end()
 		});;
 	}
 	list = await getPlayed();
@@ -887,6 +913,7 @@ app.post('/mail',async function(req,res){
 			connection.query(`select * from users where uid = ${uid}`,(err,result) => {
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	uid = req.query.uid;
@@ -922,6 +949,7 @@ app.post('/addUser',async function(req,res) {
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function getDetails(user){
@@ -930,6 +958,7 @@ app.post('/addUser',async function(req,res) {
 			connection.query(`select * from users where uname = "${user.uname}"`,(err,result) => {
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
 	async function setUserPassword(user){
@@ -946,6 +975,7 @@ app.post('/addUser',async function(req,res) {
 				}
 				resolve(result)
 			})
+			connection.end()
 		});
 	}
     var user= {
