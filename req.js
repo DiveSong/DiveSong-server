@@ -478,15 +478,8 @@ async function main()
 	setTimeout(async()=>{
 		await pop();
 		await update_nxtreq();
-		return 1;
 		// req = require('./req');
 	},1000)
 }
 
-async function toRun(){
-	while(await main()){
-		console.log("completed");
-	}
-}
-
-toRun()
+main()
