@@ -19,6 +19,7 @@ app.use(function(req, res, next) {
 	//Allow CORS
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Cache-Control","no-cache")
   next();
 });
 
@@ -79,7 +80,10 @@ app.get('/song',function(req,res) {	//Send songs to download
 						console.error(err);
 					}
 					//return result[0].tpath;
-					if(result.length == 1){
+					if(result == undefined){
+						resolve(undefined)
+					}
+					else if(result.length == 1){
 						filePath = result[0].tpath
 						console.log(`1: ${filePath}`)
 						resolve(filePath)
