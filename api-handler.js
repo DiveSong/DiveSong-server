@@ -721,6 +721,47 @@ app.post('/login',async function(req,res) {
 
 })	//API to check if given Credentials satisfied and client is real
 
+app.get('/image',async function (req,res){
+	async function getImagePath(tid){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select imgpath from track where tid=${tid}`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+					return 0;
+				}
+				else if(result.length<1){
+					resolve(undefined);
+					return 0;
+				}
+				resolve(result[0].imgpath);
+
+			})
+		});;
+	}
+	tid = req.query.tid;
+	let imPath;
+	if(tid==undefined){
+		img = fileSystem.readFileSync(config.image.default);
+	}
+	else{
+		imPath = await getImagePath(tid)
+	}
+	if(imPath == undefined ){
+		img = fileSystem.readFileSync(config.image.default);
+	}
+	else{
+		console.log(imPath);
+		img = fileSystem.readFileSync(imPath);
+	}
+
+	res.writeHead(200, {'Content-Type': 'image/gif' });
+	res.end(img, 'binary');
+
+	res.send()
+})
+
 app.get('/detailNextSong',async function (req,res){
 	async function getNext(){
 		return new Promise(function(resolve, reject) {
