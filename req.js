@@ -132,6 +132,7 @@ async function push()
 				i++
 			}
 		}
+		return i;
 	}
 }
 
@@ -174,7 +175,7 @@ async function pop()
 		{
 			return new Promise(function(resolve,reject){
 				var connection = mysql.createConnection(sql);
-				connection.query(`DELETE FROM next_tracks WHERE ind=1`, function (err, result) {
+				connection.query(`DELETE FROM next_tracks WHERE ind<=1`, function (err, result) {
 					if (err) {
 						console.error(err)
 						console.log('delete first index after duration err');resolve(undefined);
@@ -237,6 +238,7 @@ async function pop()
 	delete_next_tracks=await del_nxt()
 	delete_req_list=await del_req(delete_next_tracks)
 	delete_uhistory=await del_uhis(delete_next_tracks)
+	await update_nxtreq();
 }
 
 async function update_nxtreq()
@@ -373,8 +375,11 @@ async function send_email(tid,uid)
 	}
 }
 
-async function notify()
+async function notify(no_mail)
 {
+	if(no_mail===undefined){
+		no_mail=4;
+	}
 	gtid=await get_tids()
 	if(gtid!==undefined)
 	{
@@ -388,8 +393,8 @@ async function notify()
 				{
 					return new Promise(function(resolve,reject){
 						var connection = mysql.createConnection(sql);
-						console.log(`SELECT uid FROM uhistory WHERE tid=${tid} AND to_oper=0`)
-						connection.query(`SELECT uid FROM uhistory WHERE tid=${tid} AND to_oper=0`, function (err, result) {
+						console.log(`SELECT uid FROM uhistory inner join ( select tid from next_tracks order by ind DESC limit ${no_mail}) as nt_id on nt_id.tid = uhistory.tid WHERE tid=${tid} AND to_oper=0`)
+						connection.query(`SELECT uid FROM uhistory inner join ( select tid from next_tracks order by ind DESC limit ${no_mail}) as nt_id on nt_id.tid = uhistory.tid WHERE nt_id.tid=${tid} AND to_oper=0`, function (err, result) {
 							if (err) {
 								console.error(err)
 								console.log('get uid from uhistory err');resolve(undefined);
@@ -446,23 +451,12 @@ async function get_duration()
 			}
 			dur_temp=result
 			dur=dur_temp[0]['duration']
-			resolve(result)
+			resolve(dur)
 		});
 		connection.end()
 	});
 }
 
-function wait(sec)
-{
-	ms = sec *1000
-	var start = new Date().getTime();
-	var end = start;
-	while(end < start + ms)
-	{
-		end = new Date().getTime();
-		console.log(end)
-	}
-}
 
 function delay(secs){
 	return new Promise(function(resolve, reject) {
@@ -475,18 +469,29 @@ function delay(secs){
 async function main()
 {
 	while(1){
-		await push()
-		trk_histry=await trk_history()
-		dur=await get_duration()
-		if(typeof dur!=Number && dur!=1)
-		{
-			dur=dur[0]['duration']
+
+		push_result = await push()
+		if(push_result){
+			await notify(push_result)
 		}
+		trk_histry=await trk_history()
+
+		dur=await get_duration()
 		console.log('duration',dur)
-		await notify()
-		await delay(dur)
-		await pop();
-		await update_nxtreq();
+
+
+		let dur_left = 0;
+		for (dur_left=0;dur_left<=dur;dur_left++){
+			await delay(1)
+
+			push_result = await push()
+			if(push_result){
+				await notify(push_result)
+			}
+		}
+		if(await top_req().length != 0 && dur > 1 ){
+			await pop();
+		}
 	}	// req = require('./req');
 }
 

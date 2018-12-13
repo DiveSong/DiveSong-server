@@ -54,7 +54,7 @@ function runQuery(query,error_string,success_string){
 			}
 			else{
 				console.log(success_string);
-				connection.end()
+				// connection.end()
 				resolve(result)
 			}
 		})
@@ -136,11 +136,24 @@ async function main(){
 			if(dta['general']['album']!=undefined)
 				alname='\''+dta['general']['album']+'\''
 
+
+			tname = tname.trim().slice(1,-1).replace(`'`,'\\\'');
+			tname = `'${tname}'`
+			artists = artists.trim().slice(1,-1).replace(`'`,'\\\'');
+			artists = `'${artists}'`
+			alname = alname.trim().slice(1,-1).replace(`'`,'\\\'');
+			alname = `'${alname}'`
+
+			pth[i] = pth[i].replace(`'`,'\\\'');
 			var q1 = `INSERT INTO track (name,tpath,genre,artists,duration,bitrate,exist,aname,track_no,imgpath) VALUES (${tname},'${pth[i]}',${genre},${artists},${dur},${bit},1,${alname},1,${fth[i]})`;
 			var q2=`INSERT INTO albums SET name=${alname},rdate=${rdate},num_tracks=1 ON DUPLICATE KEY UPDATE num_tracks=num_tracks+1`
 			var q3=`UPDATE track SET exist=exist+1 WHERE tpath='${pth[i]}'`
 			var q4=`UPDATE track t,albums a SET t.track_no=a.num_tracks WHERE t.tpath='${pth[i]}' AND t.aname=a.name`
 
+			console.log(q1);
+			if(isNaN(dur)){
+				return ;
+			}
 			result = await runQuery(q1,"",'1 track inserted')
 			if(result)
 			{

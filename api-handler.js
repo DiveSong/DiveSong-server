@@ -441,7 +441,7 @@ app.get('/search',async function(req,res){	//API to search via a word if the wor
 	async function getPlayed(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select track.tid as id, name,cn.number as number from track inner join (select tid,count(tid) as number from thistory group by tid order by count(tid) desc) as cn on track.tid=cn.tid limit 10`,(err,result)=>{
+			connection.query(`select track.tid as id, name,cn.number as number,duration from track inner join (select tid,count(tid) as number from thistory group by tid order by count(tid) desc) as cn on track.tid=cn.tid limit 10`,(err,result)=>{
 				if(err){
 					console.error(err);
 					resolve(undefined);
@@ -873,7 +873,7 @@ app.get('/detailNextSong',async function (req,res){
 	async function getNext(){
 		return new Promise(function(resolve, reject) {
 			connection = mysql.createConnection(sql);
-			connection.query(`select tid, mind.ind from next_tracks inner join ( select min(ind) as ind from next_tracks) as mind on mind.ind = next_tracks.ind  ;`,(err,result) => {
+			connection.query(`select tid, mind.ind   from next_tracks inner join ( select min(ind) as ind from next_tracks ) as mind on mind.ind = next_tracks.ind  ;`,(err,result) => {
 				if(err || result.length <1){
 					console.error(err);
 					resolve(undefined);
@@ -886,16 +886,22 @@ app.get('/detailNextSong',async function (req,res){
 	async function getDetails(){
 		return new Promise(async function(resolve, reject) {
 			next = await getNext()
-			if(next.length == 0){
+			if(next == undefined || next.length == 0){
 				console.log("Request list empty");
 				return undefined;
 			}
 			connection = mysql.createConnection(sql);
-			connection.query(`select name,artists,aname as album from track where tid=${next[0].tid}`,(err,result)=>{
+			connection.query(`select name,artists,aname as album,th.lplayed as lplayed,th.tid as id from track inner join ( select * from thistory where thistory.tid=${next[0].tid} ORDER BY lplayed limit 1) as th on th.tid=track.tid where th.tid=${next[0].tid}`,(err,result)=>{
 				if(err){
 					console.error(err);
 					resolve(undefined);
 				}
+
+				date = new Date(result[0]['lplayed'].getTime()+430*60*1000);
+
+
+				result[0]['lplayed']=date.toISOString();
+
 				resolve(result);
 			})
 			connection.end()
@@ -924,7 +930,7 @@ app.get('/playNextSong',async function(req,res) {
 	async function getPath(){
 		return new Promise(async function(resolve, reject) {
 			next = await getNext()
-			if(next.length == 0){
+			if(next == undefined || next.length == 0){
 				console.log("Request list empty");
 				return undefined;
 			}
@@ -966,6 +972,53 @@ app.get('/playNextSong',async function(req,res) {
 
 
 })	// Get stream of the nextSong
+
+app.get('/getNextSong',async function(req,res){
+	async function getNext(){
+		return new Promise(function(resolve, reject) {
+			connection = mysql.createConnection(sql);
+			connection.query(`select tid, mind.ind from next_tracks inner join ( select min(ind) as ind from next_tracks) as mind on mind.ind = next_tracks.ind  ;`,(err,result) => {
+				if(err || result.length <1){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result)
+			})
+			connection.end()
+		});
+	}
+	async function getPath(){
+		return new Promise(async function(resolve, reject) {
+			next = await getNext()
+			if(next.length == 0){
+				console.log("Request list empty");
+				return undefined;
+			}
+			connection = mysql.createConnection(sql);
+			connection.query(`select tpath from track where tid=${next[0].tid}`,(err,result)=>{
+				if(err){
+					console.error(err);
+					resolve(undefined);
+				}
+				resolve(result);
+			})
+			connection.end()
+		});
+	}
+	filePath = await getPath();
+	if(filePath ==undefined || filePath.length<1){
+		res.status(500).send("Internal error");
+		return 0;
+	}
+	filePath=filePath[0].tpath;
+	console.log(filePath);
+	if(filePath === undefined){
+		res.status(500).send("Internal Error");
+		return 0;
+	}
+	res.sendFile(filePath)
+
+})
 
 app.get('/mostPlayed',async function(req,res){
 	async function getPlayed(){
