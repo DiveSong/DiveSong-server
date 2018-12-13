@@ -468,7 +468,7 @@ function delay(secs){
 	return new Promise(function(resolve, reject) {
 		setTimeout(()=>{
 			resolve(1)
-		},secs*100)
+		},secs*1000)
 	});
 }
 
