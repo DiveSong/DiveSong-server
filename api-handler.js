@@ -342,14 +342,14 @@ app.post('/request',async function(req,res){
 		return new Promise(async function(resolve, reject) {
 			requested = await isRequested(tid);
 			if(requested === undefined || requested.length <= 1 ){
-				runQuery(`delete from next_tracks where tid = ${tid}`);
-				runQuery(`delete from req_list where tid = ${tid}`)
-				runQuery(`delete from uhistory where tid= ${tid} and uid = ${uid}`)
+				await runQuery(`delete from next_tracks where tid = ${tid}`);
+				await runQuery(`delete from req_list where tid = ${tid}`)
+				await runQuery(`delete from uhistory where tid= ${tid} and uid = ${uid}`)
 			}
 			else {
 
-				runQuery(`update req_list set num_req = ${requested[0].num_req-1} where tid = ${tid}`)
-				runQuery(`delete from uhistory where tid= ${tid} and uid = ${uid}`);
+				await runQuery(`update req_list set num_req = ${requested[0].num_req-1} where tid = ${tid}`)
+				await runQuery(`delete from uhistory where tid= ${tid} and uid = ${uid}`);
 			}
 		});
 	}
