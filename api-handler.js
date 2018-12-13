@@ -36,12 +36,16 @@ function runQuery(query,error_string,success_string){
 		connection.query(query,(err,result) => {
 			if(err){
 				console.error(err);
-				console.log(error_string);
+				if(error_string !== undefined){
+					console.log(error_string);
+				}
 				connection.end()
 				resolve(0)
 			}
 			else{
-				console.log(success_string);
+				if(success_string !== undefined){
+					console.log("Success",success_string);
+				}
 				resolve(result)
 			}
 		})
@@ -351,6 +355,7 @@ app.post('/request',async function(req,res){
 				await runQuery(`update req_list set num_req = ${requested[0].num_req-1} where tid = ${tid}`)
 				await runQuery(`delete from uhistory where tid= ${tid} and uid = ${uid}`);
 			}
+			resolve(1);
 		});
 	}
 
@@ -382,10 +387,12 @@ app.post('/request',async function(req,res){
 	{
 		unrequest_result = await unrequest(uid,tid);
 		if(unrequest_result === undefined){
-			res.status(500).send("Server Error")
+			console.log("!");
+			res.status(500).end("Server Error")
 		}
 		else {
-			res.status(200).send("Ok")
+			console.log("?")
+			res.status(200).end("Ok")
 		}
 		return 0;
 	}
@@ -396,6 +403,7 @@ app.post('/request',async function(req,res){
 	else {
 		res.status(200).send("Ok")
 	}
+	return 0;
 
 })	//API to request a track
 
