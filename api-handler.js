@@ -743,13 +743,13 @@ app.get('/image',async function (req,res){
 	tid = req.query.tid;
 	let imPath;
 	if(tid==undefined){
-		img = fileSystem.readFileSync('/home/varun/UG-Course/Sem3/ASE/Project/server/resources/images/Streamline-48-128.png');
+		img = fileSystem.readFileSync(config.image.default);
 	}
 	else{
 		imPath = await getImagePath(tid)
 	}
 	if(imPath == undefined ){
-		img = fileSystem.readFileSync('/home/varun/UG-Course/Sem3/ASE/Project/server/resources/images/Streamline-48-128.png');
+		img = fileSystem.readFileSync(config.image.default);
 	}
 	else{
 		console.log(imPath);
