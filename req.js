@@ -22,9 +22,9 @@ async function top_req()
 			console.log("add next_track from top req");
 			//console.log(result[0])
 			reqst=result
-			connection.end()
 			resolve(reqst)
 		});
+		connection.end()
 	});
 }
 
@@ -44,15 +44,14 @@ async function exists(tid)
 			console.log("check tid exists or not");
 			if(result== undefined || result.length ==0 )
 			{
-				connection.end()
 				resolve(0)
 			}
 			else
 			{
-				connection.end()
 				resolve(1)
 			}
 		});
+		connection.end()
 	});
 }
 
@@ -69,9 +68,9 @@ async function count_nxtreq()
 			if(result==undefined)
 				return undefined
 			count=result[0]['count(ind)']
-			connection.end()
 			resolve(count)
 		});
+		connection.end()
 	});
 }
 
@@ -88,9 +87,9 @@ async function max_nxtreq()
 			if(result==undefined)
 				return undefined
 			max=result[0]['max(ind)']
-			connection.end()
 			resolve(max)
 		});
+		connection.end()
 	});
 }
 
@@ -124,9 +123,9 @@ async function push()
 								console.log('add next_tracks err');
 							}
 							//console.log(result);
-							connection.end()
 							resolve(result)
 						});
+						connection.end()
 					});
 				}
 				add=await add_nxtreq()
@@ -148,21 +147,19 @@ async function get_tid(ind)
 			if (err) {
 				console.error(err)
 				console.log('get tid of first index err');resolve(undefined);
-				connection.end()
 				resolve(undefined)
 				return 0;
 			}
 			if(result==undefined || result.length==0){
-				connection.end()
 				resolve(undefined)
 				return 0;
 			}
 			//console.log(result);
 			tid_temp=result
 			tid=tid_temp[0]['tid']
-			connection.end()
 			resolve(tid)
 		});
+		connection.end()
 	});
 }
 
@@ -183,13 +180,13 @@ async function pop()
 						console.log('delete first index after duration err');resolve(undefined);
 					}
 					console.log('delete first index after duration');
-					connection.end()
 					resolve(gtid)
 				});
+				connection.end()
 			});
 		}
 		else {
-			resolve(undefined)
+			return undefined;
 		}
 	}
 	async function del_req(gtid)
@@ -209,9 +206,9 @@ async function pop()
 						resolve(undefined)
 					}
 					console.log('delete from request list');
-					connection.end()
 					resolve(result)
 				});
+				connection.end()
 			});
 		}
 	}
@@ -231,9 +228,9 @@ async function pop()
 						console.log('delete the request in user history err');resolve(undefined);
 					}
 					console.log('delete the request in user history err');
-					connection.end()
 					resolve(result)
 				});
+				connection.end()
 			});
 		}
 	}
@@ -252,9 +249,9 @@ async function update_nxtreq()
 				console.log('update next_tracks err');resolve(undefined);
 			}
 			//console.log(result);
-			connection.end()
 			resolve(0)
 		});
+		connection.end()
 	});
 }
 
@@ -279,9 +276,9 @@ async function trk_history()
 					resolve(undefined)
 				}
 				//console.log(result);
-				connection.end()
 				resolve(tid)
 			});
+			connection.end()
 		});
 	}
 }
@@ -291,7 +288,7 @@ async function get_tids()
 	return new Promise(function(resolve,reject){
 		reqst=[]
 		var connection = mysql.createConnection(sql);
-		connection.query(`SELECT tid FROM next_tracks`, function (err, result) {
+		connection.query(`SELECT tid FROM next_tracks ORDER BY ind`, function (err, result) {
 			if (err) {
 				console.error(err)
 				console.log('get tids err');resolve(undefined);
@@ -303,9 +300,9 @@ async function get_tids()
 			}
 			//console.log(result[0])
 			reqst=result
-			// connection.end()
 			resolve(reqst)
 		});
+		connection.end()
 	});
 }
 
@@ -333,9 +330,9 @@ async function send_email(tid,uid)
 				}
 				userdetail.uname=result[0]['uname']
 				userdetail.email=result[0]['email']
-				// connection.end()
 				resolve(userdetail)
 			});
+			connection.end()
 		});
 	}
 	async function get_trackname()
@@ -348,10 +345,10 @@ async function send_email(tid,uid)
 					console.log('get tname from track err');resolve(undefined);
 				}
 				tname=result[0]['name']
-				// connection.end()
 				console.log(result,tname)
 				resolve(tname)
 			});
+			connection.end()
 		});
 	}
 	userdetail=await get_udetails()
@@ -405,10 +402,10 @@ async function notify()
 							}
 							else
 							{
-								// connection.end()
 								resolve(result)
 							}
 						});
+						connection.end()
 					});
 				}
 			}
@@ -427,7 +424,7 @@ async function get_duration()
 {
 	tid=await get_tids()
 	if(tid===undefined ){
-		return undefined;
+		return 1;
 	}
 	else if (tid.length==0){
 		return 1;
@@ -445,13 +442,13 @@ async function get_duration()
 			if(result ==undefined || result.length<=0)
 			{
 				// connection.end()
-				resolve(undefined)
+				resolve(1)
 			}
 			dur_temp=result
 			dur=dur_temp[0]['duration']
-			// connection.end()
 			resolve(result)
 		});
+		connection.end()
 	});
 }
 
@@ -467,19 +464,30 @@ function wait(sec)
 	}
 }
 
+function delay(secs){
+	return new Promise(function(resolve, reject) {
+		setTimeout(()=>{
+			resolve(1)
+		},secs*1000)
+	});
+}
+
 async function main()
 {
-	push=await push()
-	trk_histry=await trk_history()
-	dur=await get_duration()
-	notify = await notify()
-	// pop=await pop()
-	// update=await update_nxtreq()
-	setTimeout(async()=>{
+	while(1){
+		await push()
+		trk_histry=await trk_history()
+		dur=await get_duration()
+		if(typeof dur!=Number && dur!=1)
+		{
+			dur=dur[0]['duration']
+		}
+		console.log('duration',dur)
+		await notify()
+		await delay(dur)
 		await pop();
 		await update_nxtreq();
-		// req = require('./req');
-	},1000)
+	}	// req = require('./req');
 }
 
 main()
