@@ -20,7 +20,7 @@ var mailOptions = {
 mailOptions ={}
 smtptransporter.sendMail(mailOptions, function(error, info){
   if (error) {
-    console.error(error)
+    //console.error(error)
 	return error;
   } else {
     console.log('Email sent: ' + info.response);
