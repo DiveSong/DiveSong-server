@@ -58,6 +58,7 @@ function runQuery(query,error_string,success_string){
 				resolve(result)
 			}
 		})
+		connection.end()
 	})
 }
 
